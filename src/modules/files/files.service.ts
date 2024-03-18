@@ -106,10 +106,9 @@ export default class FilesService {
         throw new Error('Folder not found');
       }
 
-      const folderObject = folder.toObject();
-      folderObject.files?.push(_fileId);
+      folder.files?.push(_fileId);
 
-      const updatedFolder = await this.foldersRepository.update(folderObject);
+      const updatedFolder = await this.foldersRepository.update(folder);
       console.log(updatedFolder);
 
       return updatedFolder;

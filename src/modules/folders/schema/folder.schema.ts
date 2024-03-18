@@ -22,6 +22,11 @@ const folderMongoSchema = new Schema<FolderModel>({
     required: false,
     default: undefined
   },
+  parentFolderId: {
+    type: String,
+    required: true,
+    default: undefined
+  }
 },
 {
   versionKey: false

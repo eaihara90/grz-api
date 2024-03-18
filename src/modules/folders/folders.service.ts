@@ -1,7 +1,7 @@
 import { ErrorMessage } from "@/middlewares/error-message";
 import FoldersRepository from "./folders.repository";
-import { Types } from "mongoose";
-import { FolderModel, FolderModelOutputDTO, NewFolderInputDTO } from "./models/folder.model";
+import { ObjectId, Types } from "mongoose";
+import { FolderModel, FolderModelInnerFolder, FolderModelOutputDTO, NewFolderInputDTO } from "./models/folder.model";
 import { FileModel } from "../files/models/file.model";
 import FilesRepository from "../files/files.repository";
 
@@ -26,9 +26,7 @@ export default class FoldersService {
       if (!foundFolder) {
         throw new ErrorMessage('Movie not found', 404);
       }
-
-      const foundFolderObj: FolderModel = foundFolder.toObject();
-      const folderOutputDTO = await this.createFolderOutputDTO(foundFolderObj);
+      const folderOutputDTO = await this.createFolderOutputDTO(foundFolder);
       
       return folderOutputDTO;
     } catch (error) {
@@ -55,13 +53,17 @@ export default class FoldersService {
     }
   }
 
-  public async delete(id: string): Promise<boolean> {
+  public async delete(_id: string): Promise<boolean> {
     try {
-      const response = await this.foldersRepository.delete(id);
+      const foundFolder = await this.foldersRepository.findById(_id);
+      const response = await this.foldersRepository.delete(_id);
       
       if (response.deletedCount <= 0) {
         throw new Error('Movie not found');
       }
+      
+
+      await this.removeFolderFromParentFolder(_id, foundFolder!.parentFolderId);
       
       return true;
     } catch (error) {
@@ -94,16 +96,32 @@ export default class FoldersService {
         throw new Error('Folder not found');
       }
 
-      const parentFolderObject = parentFolder.toObject();
-      parentFolderObject.folders?.push(_folderId);
+      parentFolder.folders?.push(_folderId);
 
-      const updatedFolder = await this.foldersRepository.update(parentFolderObject);
-      console.log(updatedFolder);
+      const updatedFolder = await this.foldersRepository.update(parentFolder);
 
       return updatedFolder;
 
     } catch (error) {
       throw new Error("Method not implemented.");
+    }
+  }
+
+  private async removeFolderFromParentFolder(_folderId: string, _parentFolderId: string): Promise<any> {
+    try {
+      const parentFolder = await this.foldersRepository.findById(_parentFolderId);
+
+      const filteredFolders = parentFolder?.folders.filter(x => {
+        if (x.toString() !== _folderId) {
+          return x;
+        }
+      });
+      parentFolder!.folders = [...filteredFolders as Types.ObjectId[]];
+
+      await this.foldersRepository.update(parentFolder);
+
+    } catch (error) {
+      throw new Error('Error while removing folder from parent');
     }
   }
 
@@ -113,7 +131,8 @@ export default class FoldersService {
       favorites: new Array<FileModel>(),
       title: folder.title,
       path: folder.path,
-      folders: new Array<{ _id: string, title: string }>()
+      folders: new Array<FolderModelInnerFolder>(),
+      parentFolderId: folder?.parentFolderId || ''
     };
     
     const foldersPromises = folder.folders.map(_folderId => this.foldersRepository.findById(_folderId, { _id: 1, title: 1 }));
@@ -123,8 +142,15 @@ export default class FoldersService {
     const files = await Promise.all(filesPromises);
     
     foldersWithTitle.forEach(_folder => {
-      const tempInnerFolderObj = _folder!.toObject();
-      folderOutputDTO!.folders!.push({ _id: tempInnerFolderObj!._id, title: tempInnerFolderObj!.title });
+      const tempInnerFolderObj = _folder;
+      folderOutputDTO!.folders!.push({
+        _id: tempInnerFolderObj!._id,
+        title: tempInnerFolderObj!.title,
+        parentFolderInfo: {
+          _id: folder._id || '',
+          title: folder.title || ''
+        }
+      });
     });
 
     files.forEach(_file => {

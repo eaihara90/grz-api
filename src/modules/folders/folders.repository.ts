@@ -1,4 +1,4 @@
-import { Document, ProjectionType } from 'mongoose';
+import { Document, ProjectionType, Types } from 'mongoose';
 import { FolderSchema } from './schema/folder.schema';
 import { FolderModel } from './models/folder.model';
 
@@ -11,9 +11,9 @@ export default class FoldersRepository {
     }
   }
 
-  public async findById(id: string, fields?: ProjectionType<FolderModel>): Promise<(Document<unknown, {}, FolderModel>) | null> {
+  public async findById(id: string | Types.ObjectId, fields?: ProjectionType<FolderModel>): Promise<FolderModel | null> {
     try {
-      return FolderSchema.findOne({ _id: id }, fields).exec();
+      return FolderSchema.findOne({ _id: id }, fields).lean();
     } catch (error) {
       throw new Error("Method not implemented.");
     }
@@ -43,9 +43,9 @@ export default class FoldersRepository {
     }
   }
 
-  public async findRootFolder(): Promise<(Document<unknown, {}, FolderModel>) | null> {
+  public async findRootFolder(): Promise<FolderModel | null> {
     try {
-      return FolderSchema.findOne({ path: 'root' }).exec();
+      return FolderSchema.findOne({ path: 'root' }).lean();
     } catch (error) {
       throw new Error("Method not implemented.");
     }

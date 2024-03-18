@@ -1,11 +1,13 @@
+import { Types } from "mongoose";
 import { FileModel } from "../../files/models/file.model";
 
 export class FolderModel {
   _id?: any;
   files!: string[];
-  folders!: string[];
+  folders!: Array<Types.ObjectId | string>;
   title!: string;
   path?: string;
+  parentFolderId!: string;
 }
 
 export class NewFolderInputDTO {
@@ -18,9 +20,21 @@ export class NewFolderInputDTO {
 }
 
 export class FolderModelOutputDTO {
-  _id?: any;
+  _id!: any;
   favorites?: FileModel[];
-  folders?: { _id: string, title: string }[];
+  folders?: FolderModelInnerFolder[];
   title!: string;
   path?: string;
+  parentFolderId!: string;
+}
+
+export class FolderModelInnerFolder {
+  _id!: string;
+  title!: string;
+  parentFolderInfo!: FolderModelParentFolderInfo;
+}
+
+export class FolderModelParentFolderInfo {
+  _id!: string;
+  title!: string;
 }
